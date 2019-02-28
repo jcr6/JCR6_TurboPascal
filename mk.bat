@@ -1,0 +1,1 @@
+C:\TP\BIN\TPC -b -u..\Units TESTJCR6.PAS
