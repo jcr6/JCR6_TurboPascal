@@ -14,7 +14,8 @@ interface
 		storage:string; { Non 'Store' items cannot be read, but if 
 		                  if not called they should crash stuff }
 		size:Longint;
-		offset:Longint
+		offset:Longint;
+		jxsrcca:Boolean
 	end;
 	
 	type tJCRFile = record
