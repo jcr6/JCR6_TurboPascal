@@ -28,8 +28,17 @@ var
   
 Begin
   Writeln('JCR6 test utility');
+  writeln('=== Test.txt ===');
   JCR_Open(jt,'Test.JCR','Test.txt');
-  while not JCR_Eof(jt) do write(JCR_GetChar(jt));
+  while not JCR_Eof(jt) do write(JCR_GetChar(jt));  
   writeln;
+  JCR_Close(jt);
+  writeln('=== Readme.md ===');
+  JCR_Open(jt,'Test.JCR','ReAdMe.Md');
+  while not JCR_Eof(jt) do write(JCR_GetChar(jt));  
+  writeln;
+  JCR_Close(jt);
+
   writeln('All done!');
+  
 End.
