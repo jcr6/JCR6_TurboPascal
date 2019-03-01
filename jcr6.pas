@@ -34,7 +34,7 @@ interface
 		                  if not called they should crash stuff }
 		size:Longint;
 		offset:Longint;
-		jxsrcca:Boolean
+		jxsrcca:Boolean;
 	end;
 	
 	type tJCRFile = record
@@ -44,6 +44,7 @@ interface
 		packpos:LongInt;
 		jxsrcca:boolean;
 		gbyte:boolean;
+		closed:boolean;
 	end;
 	
 	var
@@ -53,6 +54,7 @@ interface
 	procedure JCR_Next(var ret:file; var success:boolean; var entry:tJCREntry);
 	procedure JCR_CloseDir(var ret:file);
 	procedure JCR_Open(var ret:tJCRfile;resource,entry:string);
+	procedure JCR_Close(Var ret:tJCRfile);
 	
 	function  JCR_Eof(var ret:tJCRfile):boolean;
 	function  JCR_GetChar(var ret:tJCRfile):char;
@@ -229,6 +231,7 @@ implementation
 	begin
 		with ret do begin
 			packpos:=0;
+			closed:=false;
 			{assign(stream,resource);
 			reset(stream,1);}
 			JCR_OpenDir(stream,resource);
@@ -255,6 +258,12 @@ implementation
 		end
 	end;
 	
+	procedure JCR_Close;
+	begin
+		Close(ret.stream);
+		ret.closed:=true;
+	end;
+	
 	function JCR_Eof;
 	var
 		p:longint;
@@ -273,6 +282,7 @@ implementation
 	var c:Byte;
 	begin
 		with ret do begin
+			if closed then J_CRASH('Trying to read a closed JCR6 entry');
 			if jxsrcca then begin
 				if (not gbyte) or (pbyte>=lbyte) then begin
 					{$IFDEF DEBUGCHAT}
