@@ -217,6 +217,11 @@ implementation
 					size   := e.size;
 					offset := e.offset;
 					seek(stream,offset);
+					e.jxsrcca := (e.storage='jxsrcca');
+					if (e.storage<>'jxsrcca') and (e.storage<>'Store') then begin
+						close(stream);
+						J_Crash('Storage method '+e.storage+' not supported for entry '+entry+' in '+resource)
+					end;
 					exit
 				end
 			until false
