@@ -22,7 +22,14 @@ Program TestJCR6;
 Uses
   jcr6;
   
+var
+	jt:tJCRFile;
+  
   
 Begin
-  WriteLn('Test Program - Content comes later!')
+  Writeln('JCR6 test utility');
+  JCR_Open(jt,'Test.JCR','Test.txt');
+  while not JCR_Eof(jt) do write(JCR_GetChar(jt));
+  writeln;
+  writeln('All done!');
 End.
