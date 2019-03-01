@@ -19,7 +19,7 @@
   --- END LICENSE BLOCK --- } 
 Unit jcr6;
 
-{$undef DEBUGCHAT}
+{$UNDEF DEBUGCHAT}
 
 
 interface
@@ -39,8 +39,9 @@ interface
 	
 	type tJCRFile = record
 		stream:file;
-		size,offset:longint;
+		size,offset:longint;		
 		cbyte,lbyte,pbyte:byte;
+		packpos:LongInt;
 		jxsrcca:boolean;
 		gbyte:boolean;
 	end;
@@ -227,6 +228,7 @@ implementation
 		ignore:byte;
 	begin
 		with ret do begin
+			packpos:=0;
 			{assign(stream,resource);
 			reset(stream,1);}
 			JCR_OpenDir(stream,resource);
@@ -258,8 +260,12 @@ implementation
 		p:longint;
 	begin
 		with ret do begin
-			p:=filepos(stream);
-			JCR_Eof:=p>=offset+size
+			if jxsrcca then
+				JCR_Eof:=packpos+1>=size {Very important no ; !!! Pascal forbids a ; when 'else' commes immediately after}
+			else begin
+				p:=filepos(stream);
+				JCR_Eof:=p>=offset+size
+			end
 		end
 	end;
 
@@ -269,15 +275,24 @@ implementation
 		with ret do begin
 			if jxsrcca then begin
 				if (not gbyte) or (pbyte>=lbyte) then begin
+					{$IFDEF DEBUGCHAT}
+					Writeln('Position: ',packpos,' NEW');
+					{$ENDIF}
+					if not gbyte then blockread(stream,c,1); {nul-ignore}
 					gbyte:=true;
-					pbyte:=0;
+					pbyte:=1;
 					blockread(stream,cbyte,1);
 					blockread(stream,lbyte,1);
+					{$IFDEF DEBUGCHAT}
+					Writeln('- cbyte: ',cbyte,'; lbyte: ',lbyte);
+					Readln;
+					{$ENDIF}
 					JCR_GetByte:=cbyte
 				end else begin
 					inc(pbyte);
 					JCR_GetByte:=cbyte
-				end
+				end;
+				inc(packpos)
 			end else begin
 				blockread(stream,c,1);
 				JCR_GetByte:=c;
