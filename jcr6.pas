@@ -1,3 +1,22 @@
+{ --- START LICENSE BLOCK ---
+  jcr6.pas
+  JCR6 for Turbo Pascal
+  version: 19.03.01
+  Copyright (C) 2019 Jeroen P. Broks
+  This software is provided 'as-is', without any express or implied
+  warranty.  In no event will the authors be held liable for any damages
+  arising from the use of this software.
+  Permission is granted to anyone to use this software for any purpose,
+  including commercial applications, and to alter it and redistribute it
+  freely, subject to the following restrictions:
+  1. The origin of this software must not be misrepresented; you must not
+     claim that you wrote the original software. If you use this software
+     in a product, an acknowledgment in the product documentation would be
+     appreciated but is not required.
+  2. Altered source versions must be plainly marked as such, and must not be
+     misrepresented as being the original software.
+  3. This notice may not be removed or altered from any source distribution.
+  --- END LICENSE BLOCK --- } 
 Unit jcr6;
 
 {$undef DEBUGCHAT}
@@ -21,6 +40,9 @@ interface
 	type tJCRFile = record
 		stream:file;
 		size,offset:longint;
+		cbyte,lbyte,pbyte:byte;
+		jxsrcca:boolean;
+		gbyte:boolean;
 	end;
 	
 	var
@@ -202,6 +224,7 @@ implementation
 	var
 		e:tJCREntry;
 		s:Boolean;
+		ignore:byte;
 	begin
 		with ret do begin
 			{assign(stream,resource);
@@ -218,13 +241,15 @@ implementation
 					offset := e.offset;
 					seek(stream,offset);
 					e.jxsrcca := (e.storage='jxsrcca');
+					jxsrcca:=e.jxsrcca;
 					if (e.storage<>'jxsrcca') and (e.storage<>'Store') then begin
 						close(stream);
 						J_Crash('Storage method '+e.storage+' not supported for entry '+entry+' in '+resource)
 					end;
 					exit
 				end
-			until false
+			until false;
+			if e.jxsrcca then blockread(stream,ignore,1) { First byte is always added by Go, but it's useless }
 		end
 	end;
 	
@@ -237,40 +262,81 @@ implementation
 			JCR_Eof:=p>=offset+size
 		end
 	end;
-	
-	function JCR_GetChar;
-	var c:char;
-	begin
-		blockread(ret.stream,c,1);
-		JCR_GetChar:=c;
-	end;
 
 	function JCR_GetByte;
 	var c:Byte;
 	begin
-		blockread(ret.stream,c,1);
-		JCR_GetByte:=c;
+		with ret do begin
+			if jxsrcca then begin
+				if (not gbyte) or (pbyte>=lbyte) then begin
+					gbyte:=true;
+					pbyte:=0;
+					blockread(stream,cbyte,1);
+					blockread(stream,lbyte,1);
+					JCR_GetByte:=cbyte
+				end else begin
+					inc(pbyte);
+					JCR_GetByte:=cbyte
+				end
+			end else begin
+				blockread(stream,c,1);
+				JCR_GetByte:=c;
+			end
+		end {width}
 	end;
+	
+	function JCR_GetChar;
+	var c:char;
+	begin
+		c := chr(JCR_GetByte(ret));
+		{blockread(ret.stream,c,1);}
+		JCR_GetChar:=c
+	end;
+
 
 	function JCR_GetInteger;
 	var c:Integer;
+		ia:array[0..2] of byte;
+		i:integer absolute ia;
 	begin
-		blockread(ret.stream,c,sizeof(c));
-		JCR_GetInteger:=c;
+		if ret.jxsrcca then begin
+			ia[0]:=JCR_GetByte(ret);
+			ia[1]:=JCR_GetByte(ret);
+			JCR_GetInteger:=i;
+		end else begin
+			blockread(ret.stream,c,2); {sizeof(c));}
+			JCR_GetInteger:=c
+		end
 	end;
 
 	function JCR_GetLongInt;
-	var c:LongInt;
+	var c:LongInt;	
+		ia:array[0..4] of byte;
+		i:LongInt absolute ia;
+		k:byte;
 	begin
-		blockread(ret.stream,c,sizeof(c));
-		JCR_GetLongint:=c;
+		if ret.jxsrcca then begin
+			for k:=0 to 3 do ia[k]:=JCR_GetByte(ret);
+			JCR_GetLongInt:=i;
+		end else begin
+			blockread(ret.stream,c,2); {sizeof(c));}
+			JCR_GetLongInt:=c
+		end
 	end;
 
 	function JCR_GetPascalString;
 	var c:string;
+		i:integer;
+		a:array[0..255] of byte;
+		s:string absolute a;
 	begin
-		blockread(ret.stream,c,sizeof(c));
-		JCR_GetPascalString:=c;
+		if ret.jxsrcca then begin 
+			for i:=0 to 255 do a[i]:=JCR_GetByte(ret);
+			JCR_GetPascalString:=s
+		end else begin
+			blockread(ret.stream,c,sizeof(c));
+			JCR_GetPascalString:=c
+		end
 	end;
 
 begin
